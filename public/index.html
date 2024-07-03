@@ -1,13 +1,55 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Upload Playlist</title>
+  <style>
+    table, th, td {
+      border: 1px solid black;
+      border-collapse: collapse;
+    }
+    th, td {
+      padding: 10px;
+    }
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      background-color: rgb(0,0,0);
+      background-color: rgba(0,0,0,0.4);
+      padding-top: 60px;
+    }
+    .modal-content {
+      background-color: #fefefe;
+      margin: 5% auto;
+      padding: 20px;
+      border: 1px solid #888;
+      width: 80%;
+    }
+    .close {
+      color: #aaa;
+      float: right;
+      font-size: 28px;
+      font-weight: bold;
+    }
+    .close:hover,
+    .close:focus {
+      color: black;
+      text-decoration: none;
+      cursor: pointer;
+    }
+  </style>
 </head>
 <body>
   <h1>Upload Playlist</h1>
-  <form action="/submit-playlist" method="POST">
+  <form id="playlistForm">
     <label for="screenId">Screen ID:</label>
     <input type="text" id="screenId" name="screenId" required><br>
 
@@ -49,5 +91,158 @@
 
     <button type="submit">Submit</button>
   </form>
+
+  <h2>Playlists</h2>
+  <table id="playlistsTable">
+    <thead>
+      <tr>
+        <th>Screen ID</th>
+        <th>Playlist Name</th>
+        <th>Playlist ID</th>
+        <th>Video URLs</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Data will be populated here -->
+    </tbody>
+  </table>
+
+  <!-- The Modal -->
+  <div id="editModal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <form id="editForm">
+        <input type="hidden" id="editScreenId" name="screenId">
+
+        <label for="editPlaylistName">Playlist Name:</label>
+        <input type="text" id="editPlaylistName" name="playlistName" readonly><br>
+
+        <label for="editPlaylistId">Playlist ID:</label>
+        <input type="text" id="editPlaylistId" name="playlistId" readonly><br>
+
+        <label for="editVideoUrl1">Video URL 1:</label>
+        <input type="url" id="editVideoUrl1" name="videoUrls" required><br>
+
+        <label for="editVideoUrl2">Video URL 2:</label>
+        <input type="url" id="editVideoUrl2" name="videoUrls"><br>
+
+        <label for="editVideoUrl3">Video URL 3:</label>
+        <input type="url" id="editVideoUrl3" name="videoUrls"><br>
+
+        <label for="editVideoUrl4">Video URL 4:</label>
+        <input type="url" id="editVideoUrl4" name="videoUrls"><br>
+
+        <label for="editVideoUrl5">Video URL 5:</label>
+        <input type="url" id="editVideoUrl5" name="videoUrls"><br>
+
+        <label for="editVideoUrl6">Video URL 6:</label>
+        <input type="url" id="editVideoUrl6" name="videoUrls"><br>
+
+        <label for="editVideoUrl7">Video URL 7:</label>
+        <input type="url" id="editVideoUrl7" name="videoUrls"><br>
+
+        <label for="editVideoUrl8">Video URL 8:</label>
+        <input type="url" id="editVideoUrl8" name="videoUrls"><br>
+
+        <label for="editVideoUrl9">Video URL 9:</label>
+        <input type="url" id="editVideoUrl9" name="videoUrls"><br>
+
+        <label for="editVideoUrl10">Video URL 10:</label>
+        <input type="url" id="editVideoUrl10" name="videoUrls"><br>
+
+        <button type="submit">Save</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const form = document.getElementById('playlistForm');
+      const editForm = document.getElementById('editForm');
+      const modal = document.getElementById('editModal');
+      const span = document.getElementsByClassName('close')[0];
+      let playlistsTableBody = document.getElementById('playlistsTable').querySelector('tbody');
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+        data.videoUrls = formData.getAll('videoUrls');
+        await fetch('/submit-playlist', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(data)
+        });
+        form.reset();
+        fetchPlaylists();
+      });
+
+      const fetchPlaylists = async () => {
+        const response = await fetch('/playlists');
+        const playlists = await response.json();
+        playlistsTableBody.innerHTML = '';
+        playlists.forEach(playlist => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${playlist.screenId}</td>
+            <td>${playlist.playlistName}</td>
+            <td>${playlist.playlistId}</td>
+            <td>${playlist.videoUrls.join(', ')}</td>
+            <td><button class="edit-button" data-screen-id="${playlist.screenId}">Edit</button></td>
+          `;
+          playlistsTableBody.appendChild(row);
+        });
+
+        document.querySelectorAll('.edit-button').forEach(button => {
+          button.addEventListener('click', async (e) => {
+            const screenId = e.target.dataset.screenId;
+            const response = await fetch(`/playlists/${screenId}`);
+            const playlist = await response.json();
+            document.getElementById('editScreenId').value = playlist.screenId;
+            document.getElementById('editPlaylistName').value = playlist.playlistName;
+            document.getElementById('editPlaylistId').value = playlist.playlistId;
+            const videoUrls = playlist.videoUrls;
+            for (let i = 0; i < 10; i++) {
+              document.getElementById(`editVideoUrl${i + 1}`).value = videoUrls[i] || '';
+            }
+            modal.style.display = 'block';
+          });
+        });
+      };
+
+      editForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const formData = new FormData(editForm);
+        const data = Object.fromEntries(formData.entries());
+        data.videoUrls = formData.getAll('videoUrls');
+        await fetch(`/playlists/${data.screenId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(data)
+        });
+        modal.style.display = 'none';
+        fetchPlaylists();
+      });
+
+      span.onclick = function() {
+        modal.style.display = 'none';
+      };
+
+      window.onclick = function(event) {
+        if (event.target == modal) {
+          modal.style.display = 'none';
+        }
+      };
+
+      fetchPlaylists();
+    });
+  </script>
 </body>
 </html>
+
+
